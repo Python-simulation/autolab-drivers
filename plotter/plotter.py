@@ -449,11 +449,11 @@ class MinModule:
         self.analyzer = analyzer
 
     def x(self):
-        index = np.argmin(self.analyzer.data[self.analyzer.y_label])
+        index = np.nanargmin(self.analyzer.data[self.analyzer.y_label])
         return self.analyzer.data[self.analyzer.x_label][index]
 
     def y(self):
-        return np.min(self.analyzer.data[self.analyzer.y_label])
+        return np.nanmin(self.analyzer.data[self.analyzer.y_label])
 
 
     def get_driver_model(self):
@@ -479,11 +479,11 @@ class MaxModule:
         self.analyzer = analyzer
 
     def x(self):
-        index = np.argmax(self.analyzer.data[self.analyzer.y_label])
+        index = np.nanargmax(self.analyzer.data[self.analyzer.y_label])
         return self.analyzer.data[self.analyzer.x_label][index]
 
     def y(self):
-        return np.max(self.analyzer.data[self.analyzer.y_label])
+        return np.nanmax(self.analyzer.data[self.analyzer.y_label])
 
 
     def get_driver_model(self):
@@ -819,7 +819,7 @@ def sweep_analyse(x_data, y_data, target_x=-1, level=-3, comparator=np.greater, 
 
         x_candidates = df['x'].mode().values  # wavelength with the most occurences (could have several wavelength with same occurance)
 
-        index = abs(x_candidates - target_x).argmin()  # take wavelength closer to target_x if several x points found
+        index = np.nanargmin(abs(x_candidates - target_x))  # take wavelength closer to target_x if several x points found
         extremum_x = x_candidates[index]
 
         index2 = np.where(x_data == extremum_x)[0][0]
@@ -828,9 +828,9 @@ def sweep_analyse(x_data, y_data, target_x=-1, level=-3, comparator=np.greater, 
     else:
         # get extremum y_data and change it only if user want a different x_max
         if comparator is np.greater:
-            extremum_index = np.argmax(y_data)
+            extremum_index = np.nanargmax(y_data)
         elif comparator is np.less:
-            extremum_index = np.argmin(y_data)
+            extremum_index = np.nanargmin(y_data)
         else:
             raise TypeError(f"Comparator must be of type np.greater or np.less or bool. Given {comparator} of type {type(comparator)}")
 
@@ -869,11 +869,11 @@ def find_local_extremum(x_data, y_data, target_x, level, order, comparator=np.gr
         extremum_array_x = x_data[extremum_array_index]
         extremum_array_y = y_data[extremum_array_index]
 
-        index = abs(extremum_array_x - target_x).argmin()
+        index = np.nanargmin(abs(extremum_array_x - target_x))
         extremum_filter = (extremum_array_x[index], extremum_array_y[index])  # data from filter extremum list
         extremum = find_extremum_from_extremum_filter(x_data, y_data, level, extremum_filter, interp=False, comparator=comparator)
     else:
-        extremum_raw_index = np.argmax(y_data)
+        extremum_raw_index = np.nanargmax(y_data)
         extremum_raw = (x_data[extremum_raw_index], y_data[extremum_raw_index])
         extremum = extremum_raw
 
@@ -895,9 +895,9 @@ def find_extremum_from_extremum_filter(x_data, y_data, level, extremum_filter, i
         new_interval_y = y_data[interval_low_index: interval_high_index+1]
 
     if comparator is np.greater:
-        extremum_index = np.argmax(new_interval_y)
+        extremum_index = np.nanargmax(new_interval_y)
     elif comparator is np.less:
-        extremum_index = np.argmin(new_interval_y)
+        extremum_index = np.nanargmin(new_interval_y)
 
     extremum = (new_interval_x[extremum_index], new_interval_y[extremum_index])
 
@@ -915,7 +915,7 @@ def find_bandwidth(x_data, y_data, level, extremum, interp, comparator=np.greate
         bandwidth_left = (x_data[0], y_data[0])
         return bandwidth_left, bandwidth_left
 
-    index_extremum = abs(x_data - extremum[0]).argmin()
+    index_extremum = np.nanargmin(abs(x_data - extremum[0]))
 
     x_left = x_data[:index_extremum+1][::-1]  # Reverse order to start at extremum
     y_left= y_data[:index_extremum+1][::-1]
