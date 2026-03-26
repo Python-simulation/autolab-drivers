@@ -19,13 +19,15 @@ except:
 
 _import_once = True
 
+# Import function are copied from autolab.core.gui.plotter.data.py
 
-def find_delimiter(filename):
+def find_delimiter(filename, skiprows=None):
     sniffer = csv.Sniffer()
     with open(filename) as fp:
         try:
             text = fp.read(5000)
-            if text.startswith("#"):
+            text = '\n'.join(text.split("\n")[skiprows:])  # remove comments
+            if text.startswith("#") or text.startswith("!"):
                 text = text[len(text.split("\n")[0])+len("\n"):]
             delimiter = sniffer.sniff(text).delimiter
         except:
@@ -39,7 +41,16 @@ def find_delimiter(filename):
 def _skiprows(filename):
     with open(filename) as fp:
         if fp.read(1) not in ("#", "!", "\n"):
-            skiprows = None
+            fp.readline()
+            if fp.read(1) not in ("#", "!", "\n"):
+                skiprows = None
+            else:
+                # allows to skip the first line if not ! or # but the next one has ! or # (Useful for some s2p)
+                skiprows = 2
+                fp.readline()
+                while fp.read(1) in ("#", "!", "\n"):
+                    skiprows += 1
+                    fp.readline()
         else:
             skiprows = 1
             fp.readline()
@@ -53,12 +64,13 @@ def find_header(filename, sep=no_default, skiprows=None):
     try:
         df = pd.read_csv(filename, sep=sep, header=None, nrows=5, skiprows=skiprows)
     except Exception:
-        if type(skiprows) is not None: skiprows += 1
+        if type(skiprows) is not type(None): skiprows += 1
         df = pd.read_csv(filename, sep=sep, header=None, nrows=5, skiprows=skiprows)
     else:
         if skiprows == 1:
             try:
-                df_columns = pd.read_csv(filename, sep=sep, header="infer", skiprows=0, nrows=0)
+                df_columns = pd.read_csv(filename, sep=sep, header="infer",
+                                         skiprows=0, nrows=0)
             except Exception:
                 pass
             else:
@@ -70,12 +82,16 @@ def find_header(filename, sep=no_default, skiprows=None):
 
     try:
         first_row = df.iloc[0].values.astype("float")
-        return ("infer", skiprows, no_default) if tuple(first_row) == tuple([i for i in range(len(first_row))]) else (None, skiprows, no_default)
+        return (("infer", skiprows, no_default)
+                if tuple(first_row) == tuple([i for i in range(len(first_row))])
+                else (None, skiprows, no_default))
     except:
         pass
     df_header = pd.read_csv(filename, sep=sep, nrows=5, skiprows=skiprows)
 
-    return ("infer", skiprows, no_default) if tuple(df.dtypes) != tuple(df_header.dtypes) else (None, skiprows, no_default)
+    return (("infer", skiprows, no_default)
+            if tuple(df.dtypes) != tuple(df_header.dtypes)
+            else (None, skiprows, no_default))
 
 
 def data_to_dataframe(data):
@@ -105,7 +121,7 @@ def importData(filename):
     """ This function open the data with the provided filename """
 
     skiprows = _skiprows(filename)
-    sep = find_delimiter(filename)
+    sep = find_delimiter(filename, skiprows)
     (header, skiprows, columns) = find_header(filename, sep, skiprows)
     try:
         data = pd.read_csv(filename, sep=sep, header=header, skiprows=skiprows, names=columns)
@@ -804,12 +820,11 @@ def sweep_analyse(x_data, y_data, target_x=-1, level=-3, comparator=np.greater, 
             x_data = x_data[keep_data]
 
     if target_x != -1:
-
         order = lambda x: (((x-1) % 3)**2 + 1)*10**abs((x-1)//3)
         order_array = order(np.arange(1, depth+1))
-        # order_array = np.array([1, 2, 5, 10, 20, 50, 100, 200])  # result if depth=6
-        data = list()
+        # order_array = np.array([1, 2, 5, 10, 20, 50, 100, 200])  # result if depth=8
 
+        data = []
         for order in order_array:  # search local extremum with different filter setting
             extremum_filter = find_local_extremum(x_data, y_data, target_x, level, order, comparator=comparator)
             point = {"x": extremum_filter[0], "y": extremum_filter[1]}
